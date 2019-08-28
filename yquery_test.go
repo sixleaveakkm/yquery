@@ -22,7 +22,7 @@ c: &cPtr
 f: *cPtr
 
 g:
-  !!merge <<: &gAnchor
+  <<: &gAnchor
       h:
         - li1
         - li2
@@ -64,8 +64,10 @@ type casePair struct {
 	Value  string
 }
 
+var yq YQuery
+
 func TestMain(m *testing.M) {
-	err := New([]byte(data))
+	_, err := yq.New([]byte(data))
 	if err != nil {
 		log.Fatalf("Failed to parse data to node")
 	}
@@ -83,7 +85,8 @@ func TestGetScalars(t *testing.T) {
 		{"o", "2010-10-10T12:34:56Z"},
 	}
 	for _, c := range testCases {
-		res, err := Get(c.Parser)
+		fmt.Printf("Testing: %s\n", c.Parser)
+		res, err := yq.Get(c.Parser)
 		asserts.NoError(err)
 		asserts.Equal(c.Value, res)
 	}
@@ -98,7 +101,7 @@ func TestGetList(t *testing.T) {
 		{"g.h[0]", "li1"},
 	}
 	for _, c := range testCases {
-		res, err := Get(c.Parser)
+		res, err := yq.Get(c.Parser)
 		asserts.NoError(err)
 		asserts.Equal(c.Value, res)
 	}
@@ -110,7 +113,7 @@ func TestGetAnchor(t *testing.T) {
 		{"f.d", "d in c"},
 	}
 	for _, c := range testCases {
-		res, err := Get(c.Parser)
+		res, err := yq.Get(c.Parser)
 		asserts.NoError(err)
 		asserts.Equal(c.Value, res)
 	}
@@ -124,7 +127,7 @@ func TestGetMerge(t *testing.T) {
 		{"j.i", "override i"},
 	}
 	for _, c := range testCases {
-		res, err := Get(c.Parser)
+		res, err := yq.Get(c.Parser)
 		asserts.NoError(err)
 		asserts.Equal(c.Value, res)
 	}
