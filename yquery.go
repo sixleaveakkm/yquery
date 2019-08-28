@@ -1,6 +1,3 @@
-// YQuery is a yq style parse to let you handle yaml file without provide data struct
-// You get get string item by provide string (e.g., "a.b[0]")
-// This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work
 package yquery
 
 import (
@@ -16,13 +13,15 @@ const (
 	mergeTag = "!!merge"
 )
 
-// RootNode is the root node holds unmarshal struct
-// It has type of Node from gopkg.in/yaml.v3 , you can operate it directly if you want
-var RootNode *yaml.Node
+type YQuery struct {
+	// RootNode is the root node holds unmarshal struct
+	// It has type of Node from gopkg.in/yaml.v3 , you can operate it directly if you want
+	RootNode *yaml.Node
 
-var MaxMergeInOneLayer int = 3
+	maxMergeInOneLayer int
+}
 
-// New unmarshal bytes data into a struct (Node) inside this package, return error if meets problem
+// Unmarshal bytes data into a struct (Node) inside this package, return error if meets problem
 // Optionally you could override maximum number of merge struct directly in one node
 // the default value will be 3. With should cover most case.
 // e.g.
@@ -47,25 +46,27 @@ var MaxMergeInOneLayer int = 3
 //   <<: &b
 // ```
 // It use RootNode to store data, which type is *yaml.Node, comes from go-yaml
-// And since it holds data inside, personal I prefer `New` rather then `Unmarshal`
-func New(in []byte, maxMerge ...int) error {
+func Unmarshal(in []byte, maxMerge ...int) (*YQuery, error) {
+	y := YQuery{}
 	if len(maxMerge) > 0 {
-		MaxMergeInOneLayer = maxMerge[0]
+		y.maxMergeInOneLayer = maxMerge[0]
+	} else {
+		y.maxMergeInOneLayer = 3
 	}
 
 	node := yaml.Node{}
 	err := yaml.Unmarshal(in, &node)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	RootNode = node.Content[0]
-	return nil
+	y.RootNode = node.Content[0]
+	return &y, nil
 }
 
 // Marshal struct, return bytes data if no error
 // Wrapper of gopkg.in/yaml.v3
-func Marshal() ([]byte, error) {
-	return yaml.Marshal(RootNode)
+func (y *YQuery) Marshal() ([]byte, error) {
+	return yaml.Marshal(y.RootNode)
 }
 
 // Get return the parsed data string of the parser if no error
@@ -86,8 +87,8 @@ func Marshal() ([]byte, error) {
 // there is no way to know "example.com.admin" means "admin" in "example.com" or "admin" in "com" in "example"
 // Currently go yaml v3 seems don't support key string with bracket, e.g. "[example.com]"
 // therefore you could provide a custom delimiter, e.g. `Get("example.com;admin",";")`
-func Get(parser string, customDelimiter ...string) (string, error) {
-	return getNodeString(parser, false, customDelimiter...)
+func (y *YQuery) Get(parser string, customDelimiter ...string) (string, error) {
+	return y.getNodeString(parser, false, customDelimiter...)
 
 }
 
@@ -106,12 +107,12 @@ func Get(parser string, customDelimiter ...string) (string, error) {
 // For the data above
 // Using `Get("c")`, it should return "b: data of b"
 // Using `GetRaw("c")`, you can get `*anchorA`
-func GetRaw(parser string, customDelimiter ...string) (string, error) {
-	return getNodeString(parser, true, customDelimiter...)
+func (y *YQuery) GetRaw(parser string, customDelimiter ...string) (string, error) {
+	return y.getNodeString(parser, true, customDelimiter...)
 }
 
-func getNodeString(parser string, raw bool, customDelimiter ...string) (string, error) {
-	node, err := GetNode(parser, raw, customDelimiter...)
+func (y *YQuery) getNodeString(parser string, raw bool, customDelimiter ...string) (string, error) {
+	node, err := y.GetNode(parser, raw, customDelimiter...)
 	if err != nil {
 		return "", err
 	}
@@ -128,13 +129,13 @@ func getNodeString(parser string, raw bool, customDelimiter ...string) (string, 
 
 // GetNode corresponding node
 // Receives a parser string (e.g. "a.b") with optional delimiter character.
-func GetNode(parser string, raw bool, customDelimiter ...string) (*yaml.Node, error) {
+func (y *YQuery) GetNode(parser string, raw bool, customDelimiter ...string) (*yaml.Node, error) {
 	delimiter, err := getDelimiter(customDelimiter)
 	if err != nil {
-		return RootNode, err
+		return y.RootNode, err
 	}
 	slices := getParserSlice(parser, delimiter)
-	result := parseNode(slices, delimiter, RootNode, 0, raw)
+	result := y.parseNode(slices, delimiter, y.RootNode, 0, raw)
 	return result.Node, result.Err
 }
 
@@ -143,9 +144,9 @@ type parseResult struct {
 	Err  error
 }
 
-func parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int, isRaw bool) parseResult {
+func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int, isRaw bool) parseResult {
 	var e error
-	ch := make(chan parseResult, MaxMergeInOneLayer)
+	ch := make(chan parseResult, y.maxMergeInOneLayer)
 
 	// anchor use
 	if currentNode.Alias != nil {
@@ -172,7 +173,7 @@ func parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int,
 		if err != nil {
 			return parseResult{currentNode, err}
 		}
-		return parseNode(slices, delimiter, currentNode.Content[index], i+1, isRaw)
+		return y.parseNode(slices, delimiter, currentNode.Content[index], i+1, isRaw)
 	case mapTag:
 		for index, content := range currentNode.Content {
 			if index%2 == 1 {
@@ -180,10 +181,10 @@ func parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int,
 			}
 
 			if content.Tag == mergeTag {
-				ch <- parseNode(slices, delimiter, currentNode.Content[index+1], i, isRaw)
+				ch <- y.parseNode(slices, delimiter, currentNode.Content[index+1], i, isRaw)
 			}
 			if content.Value == slices[i] {
-				return parseNode(slices, delimiter, currentNode.Content[index+1], i+1, isRaw)
+				return y.parseNode(slices, delimiter, currentNode.Content[index+1], i+1, isRaw)
 			}
 		}
 		e = fmt.Errorf("cannot find item %s", strings.Join(slices[:i], delimiter))
@@ -195,7 +196,7 @@ func parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int,
 	close(ch)
 	if e != nil {
 		var resArr []parseResult
-		for i := 0; i < MaxMergeInOneLayer; i++ {
+		for i := 0; i < y.maxMergeInOneLayer; i++ {
 			res, ok := <-ch
 			if !ok {
 				continue
