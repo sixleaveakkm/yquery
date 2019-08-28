@@ -1,7 +1,9 @@
-package yquery
+package yquery_test
 
 import (
 	"fmt"
+
+	"github.com/sixleaveakkm/yquery"
 )
 
 // language=yaml
@@ -22,12 +24,7 @@ D: "*anchorA"
 `
 
 func ExampleGetInt() {
-
-	var yq YQuery
-	_, err := yq.New([]byte(exampleData))
-	if err != nil {
-		// failed to unmarshal data
-	}
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 
 	dataA, err := yq.Get("intA")
 	if err != nil {
@@ -38,33 +35,21 @@ func ExampleGetInt() {
 }
 
 func ExampleGetString() {
-	var yq YQuery
-	_, err := yq.New([]byte(exampleData))
-	if err != nil {
-		// failed to unmarshal data
-	}
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	dataB, _ := yq.Get("stringB")
 	fmt.Println(dataB)
 	// Output: this is a string
 }
 
 func ExampleGetMapItem() {
-	var yq YQuery
-	_, err := yq.New([]byte(exampleData))
-	if err != nil {
-		// failed to unmarshal data
-	}
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	dataD, _ := yq.Get("mapC.intD")
 	fmt.Println(dataD)
 	// Output: 222
 }
 
 func ExampleGetList() {
-	var yq YQuery
-	_, err := yq.New([]byte(exampleData))
-	if err != nil {
-		// failed to unmarshal data
-	}
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// list index starts from 0
 	dataF2, _ := yq.Get("mapC.listF[1]")
 	fmt.Println(dataF2)
@@ -76,16 +61,14 @@ func ExampleGetWithDelimiter() {
 example.com:
   admin: admin@example.com
 `
-	yq := &YQuery{}
-	_, _ = yq.New([]byte(data))
+	yq, _ := yquery.Unmarshal([]byte(data))
 	admin, _ := yq.Get("example.com;admin", ";")
 	fmt.Println(admin)
 	// Output: admin@example.com
 }
 
 func ExampleGetAnchor() {
-	var yq YQuery
-	_, _ = yq.New([]byte(exampleData))
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
 
 	dataBinC, _ := yq.Get("C")
@@ -94,8 +77,7 @@ func ExampleGetAnchor() {
 }
 
 func ExampleGetAnchorOrigin() {
-	var yq YQuery
-	_, _ = yq.New([]byte(exampleData))
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
 
 	dataA, _ := yq.Get("A")
@@ -104,8 +86,7 @@ func ExampleGetAnchorOrigin() {
 }
 
 func ExampleGetAnchorRaw() {
-	var yq YQuery
-	_, _ = yq.New([]byte(exampleData))
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
 	rawC, _ := yq.GetRaw("C")
 	fmt.Println(rawC)
@@ -113,8 +94,7 @@ func ExampleGetAnchorRaw() {
 }
 
 func ExampleGetAnchorRawOrigin() {
-	var yq YQuery
-	_, _ = yq.New([]byte(exampleData))
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
 
 	dataA, _ := yq.GetRaw("A")
@@ -124,8 +104,7 @@ func ExampleGetAnchorRawOrigin() {
 }
 
 func ExampleGetAstString() {
-	var yq YQuery
-	_, _ = yq.New([]byte(exampleData))
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
 	dataD, _ := yq.Get("D")
 	fmt.Println(dataD)

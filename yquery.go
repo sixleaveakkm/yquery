@@ -1,3 +1,7 @@
+// yquery is a yq style parse to let you handle yaml file without provide data struct
+// You get get string item by provide string (e.g., "a.b[0]")
+// This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work
+
 package yquery
 
 import (
@@ -13,6 +17,7 @@ const (
 	mergeTag = "!!merge"
 )
 
+// YQuery is the data struct hold necessary unmarshal data
 type YQuery struct {
 	// RootNode is the root node holds unmarshal struct
 	// It has type of Node from gopkg.in/yaml.v3 , you can operate it directly if you want

@@ -1,4 +1,4 @@
-package yquery
+package yquery_test
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/sixleaveakkm/yquery"
 )
 
 // language=yaml
@@ -64,10 +66,11 @@ type casePair struct {
 	Value  string
 }
 
-var yq YQuery
+var yq *yquery.YQuery
 
 func TestMain(m *testing.M) {
-	_, err := yq.New([]byte(data))
+	var err error
+	yq, err = yquery.Unmarshal([]byte(data))
 	if err != nil {
 		log.Fatalf("Failed to parse data to node")
 	}
@@ -85,7 +88,6 @@ func TestGetScalars(t *testing.T) {
 		{"o", "2010-10-10T12:34:56Z"},
 	}
 	for _, c := range testCases {
-		fmt.Printf("Testing: %s\n", c.Parser)
 		res, err := yq.Get(c.Parser)
 		asserts.NoError(err)
 		asserts.Equal(c.Value, res)
