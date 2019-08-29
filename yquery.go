@@ -1,7 +1,6 @@
-// yquery is a yq style parse to let you handle yaml file without provide data struct
+// Package yquery is a yq style parse to let you handle yaml file without provide data struct
 // You get get string item by provide string (e.g., "a.b[0]")
 // This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work
-
 package yquery
 
 import (
@@ -30,6 +29,7 @@ type YQuery struct {
 // Optionally you could override maximum number of merge struct directly in one node
 // the default value will be 3. With should cover most case.
 // e.g.
+//
 // ```
 // ...
 // a:
@@ -37,8 +37,10 @@ type YQuery struct {
 //   <<: *mergeFromSomewhereElse
 // ...
 // ```
+//
 // In the example above, the number of merge in one node is 2.
 // And in the example below, the number is 1
+//
 // ```
 // a:
 //   <<: &a
@@ -50,6 +52,7 @@ type YQuery struct {
 // c:
 //   <<: &b
 // ```
+//
 // It use RootNode to store data, which type is *yaml.Node, comes from go-yaml
 func Unmarshal(in []byte, maxMerge ...int) (*YQuery, error) {
 	y := YQuery{}
@@ -77,18 +80,22 @@ func (y *YQuery) Marshal() ([]byte, error) {
 // Get return the parsed data string of the parser if no error
 // Receives a parser string (e.g. "a.b") with optional delimiter character.
 // Example, if if the data is like following:
+//
 // ```yaml
 // a:
 //   b: data of b
 // ```
+//
 // Get("a.b") should return "data of b"
 //
 // Optional parameter "customDelimiter"
 // For a struct like following,
+//
 // ```
 // example.com:
 //   admin: admin@example.com
 // ```
+//
 // there is no way to know "example.com.admin" means "admin" in "example.com" or "admin" in "com" in "example"
 // Currently go yaml v3 seems don't support key string with bracket, e.g. "[example.com]"
 // therefore you could provide a custom delimiter, e.g. `Get("example.com;admin",";")`
@@ -99,6 +106,7 @@ func (y *YQuery) Get(parser string, customDelimiter ...string) (string, error) {
 
 // GetRaw return the raw string if there is no error
 // GetRaw is similar to Get, but keep the anchor and merge item
+//
 // ```yaml
 // a: &anchorA
 //   b: data of b
@@ -109,6 +117,7 @@ func (y *YQuery) Get(parser string, customDelimiter ...string) (string, error) {
 // f:
 //   <<: *mergeC
 // ```
+//
 // For the data above
 // Using `Get("c")`, it should return "b: data of b"
 // Using `GetRaw("c")`, you can get `*anchorA`
