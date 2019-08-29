@@ -1,7 +1,6 @@
-// yquery is a yq style parse to let you handle yaml file without provide data struct
-// You get get string item by provide string (e.g., "a.b[0]")
-// This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work
-
+// Package yquery is a yq style parse to let you handle yaml file without provide data struct.
+// You get get string item by provide string (e.g., "a.b[0]").
+// This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work.
 package yquery
 
 import (
@@ -18,39 +17,36 @@ const (
 )
 
 // YQuery is the data struct hold necessary unmarshal data
+// RootNode is the root node holds unmarshal struct.
+// It has type of Node from gopkg.in/yaml.v3 , you can operate it directly if you want.
 type YQuery struct {
-	// RootNode is the root node holds unmarshal struct
-	// It has type of Node from gopkg.in/yaml.v3 , you can operate it directly if you want
 	RootNode *yaml.Node
 
 	maxMergeInOneLayer int
 }
 
 // Unmarshal bytes data into a struct (Node) inside this package, return error if meets problem
-// Optionally you could override maximum number of merge struct directly in one node
-// the default value will be 3. With should cover most case.
+// Optionally you could override maximum number of merge struct directly in one node.
+// The default value will be 3. With should cover most case.
 // e.g.
-// ```
-// ...
-// a:
-//   <<: *mergeFromSomewhere
-//   <<: *mergeFromSomewhereElse
-// ...
-// ```
+//     ...
+//      a:
+//        <<: *mergeFromSomewhere
+//        <<: *mergeFromSomewhereElse
+//     ...
+//
 // In the example above, the number of merge in one node is 2.
-// And in the example below, the number is 1
-// ```
-// a:
-//   <<: &a
-//      a1: foo
-// b:
-//   <<: &b
-//     <<: *a
-//     b1: bar
-// c:
-//   <<: &b
-// ```
-// It use RootNode to store data, which type is *yaml.Node, comes from go-yaml
+// And in the example below, the number is 1.
+//  	a:
+//  	  <<: &a
+//  	     a1: foo
+//  	b:
+//  	  <<: &b
+//  	    <<: *a
+//  	    b1: bar
+//  	c:
+//  	  <<: &b
+// It use RootNode to store data, which type is *yaml.Node, comes from go-yaml.
 func Unmarshal(in []byte, maxMerge ...int) (*YQuery, error) {
 	y := YQuery{}
 	if len(maxMerge) > 0 {
@@ -69,7 +65,7 @@ func Unmarshal(in []byte, maxMerge ...int) (*YQuery, error) {
 }
 
 // Marshal struct, return bytes data if no error
-// Wrapper of gopkg.in/yaml.v3
+// Wrapper of gopkg.in/yaml.v3.
 func (y *YQuery) Marshal() ([]byte, error) {
 	return yaml.Marshal(y.RootNode)
 }
@@ -77,41 +73,39 @@ func (y *YQuery) Marshal() ([]byte, error) {
 // Get return the parsed data string of the parser if no error
 // Receives a parser string (e.g. "a.b") with optional delimiter character.
 // Example, if if the data is like following:
-// ```yaml
-// a:
-//   b: data of b
-// ```
-// Get("a.b") should return "data of b"
+//      a:
+//         b: data of b
 //
-// Optional parameter "customDelimiter"
+// Get("a.b") should return "data of b".
+// Optional parameter "customDelimiter".
 // For a struct like following,
-// ```
-// example.com:
-//   admin: admin@example.com
-// ```
-// there is no way to know "example.com.admin" means "admin" in "example.com" or "admin" in "com" in "example"
-// Currently go yaml v3 seems don't support key string with bracket, e.g. "[example.com]"
-// therefore you could provide a custom delimiter, e.g. `Get("example.com;admin",";")`
+//
+//    example.com:
+//        admin: admin@example.com
+//
+// there is no way to know "example.com.admin" means "admin" in "example.com" or "admin" in "com" in "example".
+// Currently go yaml v3 seems don't support key string with bracket, e.g. "[example.com]".
+// therefore you could provide a custom delimiter, e.g. `Get("example.com;admin",";")`.
 func (y *YQuery) Get(parser string, customDelimiter ...string) (string, error) {
 	return y.getNodeString(parser, false, customDelimiter...)
 
 }
 
 // GetRaw return the raw string if there is no error
-// GetRaw is similar to Get, but keep the anchor and merge item
-// ```yaml
-// a: &anchorA
-//   b: data of b
-// c: *anchorA
-// d:
-//   <<: &mergeC
-//      e: 1
-// f:
-//   <<: *mergeC
-// ```
-// For the data above
-// Using `Get("c")`, it should return "b: data of b"
-// Using `GetRaw("c")`, you can get `*anchorA`
+// GetRaw is similar to Get, but keep the anchor and merge item.
+//
+//     a: &anchorA
+//       b: data of b
+//     c: *anchorA
+//     d:
+//       <<: &mergeC
+//           e: 1
+//     f:
+//       <<: *mergeC
+//
+// For the data above,
+// using `Get("c")`, it should return "b: data of b",
+// using `GetRaw("c")`, you can get `*anchorA`.
 func (y *YQuery) GetRaw(parser string, customDelimiter ...string) (string, error) {
 	return y.getNodeString(parser, true, customDelimiter...)
 }
