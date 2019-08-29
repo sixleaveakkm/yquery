@@ -1,5 +1,5 @@
-// Package yquery is a yq style parse to let you handle yaml file without provide data struct.
-// You get get string item by provide string (e.g., "a.b[0]").
+// Package yquery is a yq style parse to let you handle yaml file without provide data struct
+// You get get string item by provide string (e.g., "a.b[0]") in your golang project
 // This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work.
 package yquery
 
