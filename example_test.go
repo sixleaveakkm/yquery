@@ -85,6 +85,13 @@ func ExampleGetAnchorOrigin() {
 	// Output: B: string b
 }
 
+func ExampleGetValueInAnchor() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	dataAB, _ := yq.Get("A.B")
+	fmt.Println(dataAB)
+	// Output: string b
+}
+
 func ExampleGetAnchorRaw() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
@@ -109,4 +116,57 @@ func ExampleGetAstString() {
 	dataD, _ := yq.Get("D")
 	fmt.Println(dataD)
 	// Output: *anchorA
+}
+
+func ExampleSetInt() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+
+	_ = yq.Set("intA", "333")
+	newA, _ := yq.Get("intA")
+	fmt.Println(newA)
+	// Output: 333
+}
+
+func ExampleSetString() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("stringB", "string modified")
+	dataB, _ := yq.Get("stringB")
+	fmt.Println(dataB)
+	// Output: string modified
+}
+
+func ExampleSetMapItem() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("mapC.intD", "555")
+	dataD, _ := yq.Get("mapC.intD")
+	fmt.Println(dataD)
+	// Output: 555
+}
+
+func ExampleSetList() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("mapC.listF[0]", "item to be 0")
+	dataF2, _ := yq.Get("mapC.listF[0]")
+	fmt.Println(dataF2)
+	// Output: item to be 0
+}
+
+func ExampleSetAnchor() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	// skip error handle
+	_ = yq.Set("A.B", "new b")
+	dataBinA, _ := yq.Get("A.B")
+	dataBinC, _ := yq.Get("C.B")
+	fmt.Println(dataBinA)
+	fmt.Println(dataBinC)
+	// Output: new b
+	// new b
+}
+
+func ExampleSetAnchorReferenceError() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	// skip error handle
+	err := yq.Set("C.B", "new b")
+	fmt.Printf("%s\n", err)
+	// Output: the item 'C.B' is unable to write because it is in an anchor reference or is an item of the merged item
 }
