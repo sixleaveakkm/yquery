@@ -3,7 +3,7 @@
 ## Overview [![GoDoc](https://godoc.org/github.com/sixleaveakkm/yquery?status.svg)](https://godoc.org/github.com/sixleaveakkm/yquery) [![Build Status](https://travis-ci.org/sixleaveakkm/yquery.svg?branch=master)](https://travis-ci.org/sixleaveakkm/yquery)
 
 yquery is a yq style parse to let you handle yaml file without provide data struct
-You get get string item by provide string (e.g., "a.b[0]") in your golang project
+You can **GET** or **SET** item by provide string (e.g., "a.b[0]") in your golang project
 This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work, thanks for their great job
 
 ## Install
@@ -11,6 +11,18 @@ This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the
 ```
 go get github.com/sixleaveakkm/yquery
 ```
+
+## Checklist
+- [x] able to get item
+- [x] able to get item raw data
+- [x] able to set exist item with simple struct data
+- [x] able to set (add) new item with simple data
+
+- [ ] able to set (convert) literal node to map or list 
+- [ ] able to set recursive path item with data
+- [ ] able to set item with anchor or merge
+- [ ] able to handler comment properly
+- [ ] provide `Delete`
 
 ## Example
 
@@ -32,12 +44,12 @@ D: "*anchorA"
 `
 ```
 
-## Initialize
+### Initialize
 ```go
 yq, _ := yquery.Unmarshal([]byte(exampleData))
 ```
 
-## Get Data
+### Get Data
 ```
 dataA, err := yq.Get("intA")
 fmt.Println(dataA)
@@ -48,23 +60,7 @@ fmt.Println(dataB)
 // Output: this is a string
 ```
 
-## Get Data From map
-```go
-dataD, _ := yq.Get("mapC.intD")
-fmt.Println(dataD)
-// Output: 222
-```
-
-## Get Data from list
-```
-yq, _ := yquery.Unmarshal([]byte(exampleData))
-// list index starts from 0
-dataF2, _ := yq.Get("mapC.listF[1]")
-fmt.Println(dataF2)
-// Output: list item 2
-```
-
-## Use Self Defined Delimiter
+### Use Self Defined Delimiter
 It use go-yaml v3 to do the base parse job, which not support
 key like: `[example.com]` yet.
 ```go
@@ -78,21 +74,21 @@ fmt.Println(admin)
 // Output: admin@example.com
 ```
 
-## Get Object
+### Get Object
 ```go
 dataBinC, _ := yq.Get("C")
 fmt.Println(dataBinC)
 // Output: B: string b
 ```
 
-## Get Anchor
+### Get Anchor
 ```go
 dataA, _ := yq.Get("A")
 fmt.Println(dataA)
 // Output: B: string b
 ```
 
-## Go Raw Data
+### Get Raw Data
 ```go
 yq, _ := yquery.Unmarshal([]byte(exampleData))
 // skip error handle
@@ -106,6 +102,9 @@ fmt.Println(dataA)
 // B: string b
 ```
 
+**Check `example_test.go` for more example**
+
+**Check `yquery_test.go` for edge condition**
 
 ## Author
 

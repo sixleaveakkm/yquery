@@ -19,9 +19,9 @@ func getSequenceNum(slice string) (int, error) {
 
 func getDelimiter(option []Config) (string, error) {
 	if len(option) > 1 {
-		return "", fmt.Errorf("get could only get 0 or 1 string for delimiter, got %s", option)
+		return "", fmt.Errorf("get could only get 0 or 1 string for delimiter, got %d", len(option))
 	}
-	if len(option) == 0 && option[0].Delimiter != "" {
+	if len(option) == 1 && option[0].Delimiter != "" {
 		deli := option[0].Delimiter
 		if deli == "[" || deli == "]" {
 			return "", fmt.Errorf("custom delimiter cannot be '[' or ']'")

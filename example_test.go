@@ -27,33 +27,45 @@ func ExampleGetInt() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 
 	dataA, err := yq.Get("intA")
+	rawA, _ := yq.GetRaw("intA")
 	if err != nil {
 		// failed get
 	}
 	fmt.Println(dataA)
+	fmt.Println(rawA)
 	// Output: 111
+	// 111
 }
 
 func ExampleGetString() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	dataB, _ := yq.Get("stringB")
+	rawB, _ := yq.GetRaw("stringB")
 	fmt.Println(dataB)
+	fmt.Println(rawB)
 	// Output: this is a string
+	// this is a string
 }
 
 func ExampleGetMapItem() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	dataD, _ := yq.Get("mapC.intD")
+	rawDataD, _ := yq.GetRaw("mapC.intD")
 	fmt.Println(dataD)
+	fmt.Println(rawDataD)
 	// Output: 222
+	// 222
 }
 
 func ExampleGetList() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// list index starts from 0
 	dataF2, _ := yq.Get("mapC.listF[1]")
+	rawF2, _ := yq.GetRaw("mapC.listF[1]")
 	fmt.Println(dataF2)
+	fmt.Println(rawF2)
 	// Output: list item 2
+	// list item 2
 }
 
 func ExampleGetWithDelimiter() {
@@ -67,55 +79,48 @@ example.com:
 	// Output: admin@example.com
 }
 
-func ExampleGetAnchor() {
+func ExampleGetAnchorReference() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-
 	dataBinC, _ := yq.Get("C")
 	fmt.Println(dataBinC)
+	rawC, _ := yq.GetRaw("C")
+	fmt.Println(rawC)
 	// Output: B: string b
+	// *anchorA
 }
 
-func ExampleGetAnchorOrigin() {
+func ExampleGetAnchorDefine() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-
 	dataA, _ := yq.Get("A")
+	rawA, _ := yq.GetRaw("A")
 	fmt.Println(dataA)
+	fmt.Println("---")
+	fmt.Println(rawA)
 	// Output: B: string b
+	// ---
+	// &anchorA
+	// B: string b
 }
 
 func ExampleGetValueInAnchor() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	dataAB, _ := yq.Get("A.B")
+	dataCB, _ := yq.Get("C.B")
 	fmt.Println(dataAB)
+	fmt.Println(dataCB)
 	// Output: string b
-}
-
-func ExampleGetAnchorRaw() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-	rawC, _ := yq.GetRaw("C")
-	fmt.Println(rawC)
-	// Output: *anchorA
-}
-
-func ExampleGetAnchorRawOrigin() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-
-	dataA, _ := yq.GetRaw("A")
-	fmt.Println(dataA)
-	// Output: &anchorA
-	// B: string b
+	// string b
 }
 
 func ExampleGetAstString() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	// skip error handle
 	dataD, _ := yq.Get("D")
+	rawD, _ := yq.GetRaw("D")
 	fmt.Println(dataD)
+	fmt.Println(rawD)
 	// Output: *anchorA
+	// *anchorA
 }
 
 func ExampleSetInt() {
@@ -135,6 +140,14 @@ func ExampleSetString() {
 	// Output: string modified
 }
 
+func ExampleSetAddItem() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("notExist", "new value")
+	newItem, _ := yq.Get("notExist")
+	fmt.Println(newItem)
+	// Output: new value
+}
+
 func ExampleSetMapItem() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	_ = yq.Set("mapC.intD", "555")
@@ -143,12 +156,28 @@ func ExampleSetMapItem() {
 	// Output: 555
 }
 
+func ExampleSetMapNewItem() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("mapC.newItem", "555")
+	newItem, _ := yq.Get("mapC.newItem")
+	fmt.Println(newItem)
+	// Output: 555
+}
+
 func ExampleSetList() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 	_ = yq.Set("mapC.listF[0]", "item to be 0")
-	dataF2, _ := yq.Get("mapC.listF[0]")
-	fmt.Println(dataF2)
+	dataF1, _ := yq.Get("mapC.listF[0]")
+	fmt.Println(dataF1)
 	// Output: item to be 0
+}
+
+func ExampleSetListNewItem() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("mapC.listF[2]", "new item 3")
+	dataF3, _ := yq.Get("mapC.listF[2]")
+	fmt.Println(dataF3)
+	// Output: new item 3
 }
 
 func ExampleSetAnchor() {
@@ -168,5 +197,5 @@ func ExampleSetAnchorReferenceError() {
 	// skip error handle
 	err := yq.Set("C.B", "new b")
 	fmt.Printf("%s\n", err)
-	// Output: the item 'C.B' is unable to write because it is in an anchor reference or is an item of the merged item
+	// Output: the item 'C' reaches an anchor reference. You can not modify value from anchor reference
 }
