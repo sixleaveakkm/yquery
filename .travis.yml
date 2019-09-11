@@ -6,3 +6,9 @@ go:
   - 1.11.x
   - 1.12
   - master
+
+branches:
+  except:
+    - develop
+  only:
+    - master

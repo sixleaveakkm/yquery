@@ -3,14 +3,26 @@
 ## Overview [![GoDoc](https://godoc.org/github.com/sixleaveakkm/yquery?status.svg)](https://godoc.org/github.com/sixleaveakkm/yquery) [![Build Status](https://travis-ci.org/sixleaveakkm/yquery.svg?branch=master)](https://travis-ci.org/sixleaveakkm/yquery)
 
 yquery is a yq style parse to let you handle yaml file without provide data struct
-You get get string item by provide string (e.g., "a.b[0]") in your golang project
-This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work.
+You can **GET** or **SET** item by provide string (e.g., "a.b[0]") in your golang project
+This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work, thanks for their great job
 
 ## Install
 
 ```
 go get github.com/sixleaveakkm/yquery
 ```
+
+## Checklist
+- [x] able to get item
+- [x] able to get item raw data
+- [x] able to set exist item with simple struct data
+- [x] able to set (add) new item with simple data
+
+- [ ] able to set (convert) literal node to map or list 
+- [ ] able to set recursive path item with data
+- [ ] able to set item with anchor or merge
+- [ ] able to handler comment properly
+- [ ] provide `Delete`
 
 ## Example
 
@@ -30,96 +42,69 @@ C: *anchorA
 
 D: "*anchorA"
 `
+```
 
-func ExampleGetInt() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
+### Initialize
+```go
+yq, _ := yquery.Unmarshal([]byte(exampleData))
+```
 
-	dataA, err := yq.Get("intA")
-	if err != nil {
-		// failed get
-	}
-	fmt.Println(dataA)
-	// Output: 111
-}
+### Get Data
+```
+dataA, err := yq.Get("intA")
+fmt.Println(dataA)
+// Output: 111
 
-func ExampleGetString() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	dataB, _ := yq.Get("stringB")
-	fmt.Println(dataB)
-	// Output: this is a string
-}
+dataB, _ := yq.Get("stringB")
+fmt.Println(dataB)
+// Output: this is a string
+```
 
-func ExampleGetMapItem() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	dataD, _ := yq.Get("mapC.intD")
-	fmt.Println(dataD)
-	// Output: 222
-}
-
-func ExampleGetList() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// list index starts from 0
-	dataF2, _ := yq.Get("mapC.listF[1]")
-	fmt.Println(dataF2)
-	// Output: list item 2
-}
-
-func ExampleGetWithDelimiter() {
+### Use Self Defined Delimiter
+It use go-yaml v3 to do the base parse job, which not support
+key like: `[example.com]` yet.
+```go
 	data := `
 example.com:
   admin: admin@example.com
 `
-	yq, _ := yquery.Unmarshal([]byte(data))
-	admin, _ := yq.Get("example.com;admin", ";")
-	fmt.Println(admin)
-	// Output: admin@example.com
-}
-
-func ExampleGetAnchor() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-
-	dataBinC, _ := yq.Get("C")
-	fmt.Println(dataBinC)
-	// Output: B: string b
-}
-
-func ExampleGetAnchorOrigin() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-
-	dataA, _ := yq.Get("A")
-	fmt.Println(dataA)
-	// Output: B: string b
-}
-
-func ExampleGetAnchorRaw() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-	rawC, _ := yq.GetRaw("C")
-	fmt.Println(rawC)
-	// Output: *anchorA
-}
-
-func ExampleGetAnchorRawOrigin() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-
-	dataA, _ := yq.GetRaw("A")
-	fmt.Println(dataA)
-	// Output: &anchorA
-	// B: string b
-}
-
-func ExampleGetAstString() {
-	yq, _ := yquery.Unmarshal([]byte(exampleData))
-	// skip error handle
-	dataD, _ := yq.Get("D")
-	fmt.Println(dataD)
-	// Output: *anchorA
-}
-
+yq, _ := yquery.Unmarshal([]byte(data))
+admin, _ := yq.Get("example.com;admin", ";")
+fmt.Println(admin)
+// Output: admin@example.com
 ```
+
+### Get Object
+```go
+dataBinC, _ := yq.Get("C")
+fmt.Println(dataBinC)
+// Output: B: string b
+```
+
+### Get Anchor
+```go
+dataA, _ := yq.Get("A")
+fmt.Println(dataA)
+// Output: B: string b
+```
+
+### Get Raw Data
+```go
+yq, _ := yquery.Unmarshal([]byte(exampleData))
+// skip error handle
+rawC, _ := yq.GetRaw("C")
+fmt.Println(rawC)
+// Output: *anchorA
+
+dataA, _ := yq.GetRaw("A")
+fmt.Println(dataA)
+// Output: &anchorA
+// B: string b
+```
+
+**Check `example_test.go` for more example**
+
+**Check `yquery_test.go` for edge condition**
 
 ## Author
 

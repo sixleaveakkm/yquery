@@ -111,7 +111,15 @@ func (y *YQuery) GetRaw(parser string, customDelimiter ...string) (string, error
 }
 
 func (y *YQuery) getNodeString(parser string, raw bool, customDelimiter ...string) (string, error) {
-	node, err := y.GetNode(parser, raw, customDelimiter...)
+	if len(customDelimiter) > 1 {
+		return "", fmt.Errorf("get could only get 0 or 1 string for delimiter, got %s", customDelimiter)
+	}
+	delimiter := ""
+	if len(customDelimiter) > 0 {
+		delimiter = customDelimiter[0]
+	}
+	config := Config{Delimiter: delimiter}
+	node, err := y.GetNode(parser, raw, config)
 	if err != nil {
 		return "", err
 	}
@@ -123,19 +131,100 @@ func (y *YQuery) getNodeString(parser string, raw bool, customDelimiter ...strin
 	if err != nil {
 		return "", err
 	}
-	return string(str), nil
+	return strings.TrimSpace(string(str)), nil
 }
 
 // GetNode corresponding node
 // Receives a parser string (e.g. "a.b") with optional delimiter character.
-func (y *YQuery) GetNode(parser string, raw bool, customDelimiter ...string) (*yaml.Node, error) {
-	delimiter, err := getDelimiter(customDelimiter)
+func (y *YQuery) GetNode(parser string, raw bool, config ...Config) (*yaml.Node, error) {
+	delimiter, err := getDelimiter(config)
 	if err != nil {
 		return y.RootNode, err
 	}
 	slices := getParserSlice(parser, delimiter)
-	result := y.parseNode(slices, delimiter, y.RootNode, 0, raw)
+	// make a copy of root. Prevent modify
+	node := y.RootNode
+	result := y.parseNode(slices, delimiter, node, 0, false, parseParameter{
+		getParameter: getParameter{
+			IsRaw: raw,
+		},
+	})
 	return result.Node, result.Err
+}
+
+// Set the value of responding node
+// Cannot set value inside anchor reference's, and not able to override sub item of a merge item.
+func (y *YQuery) Set(parser string, value string, config ...Config) error {
+	if len(config) == 0 {
+		config = append(config, Config{})
+	}
+	delimiter, err := getDelimiter(config)
+	if err != nil {
+		return err
+	}
+	slices := getParserSlice(parser, delimiter)
+	result := y.parseNode(slices, delimiter, y.RootNode, 0, true, parseParameter{
+		setParameter: setParameter{
+			Config:  config[0],
+			Value:   value,
+			InMerge: false,
+		},
+	})
+	if result.Err != nil {
+		return result.Err
+	}
+	return nil
+}
+
+// Config is the optional parameter for set
+// All elements are optional.
+type Config struct {
+	// Delimiter is the custom delimiter
+	Delimiter string
+	// ForceInMerge should be set to true if you want to set a element inside a merge node and this element is not a root element of the merge node
+	// It is used to prevent unexpected data loss because all other data related to this path will be loss.
+	// e.g. there is a merge
+	//     o:
+	//       <<: *mergeA
+	//          a:
+	//             b: 333
+	//             c: testValue
+	//          d: otherValue
+	//
+	// If you set "o.a.b" to 444, due to the yaml design, a new node "a" will be added directly to "o" to override the merge.
+	// The result will be
+	//     o:
+	//       <<: *mergeA
+	//          a:
+	//             b: 333
+	//             c: testValue
+	//          d: otherValue
+	//       a:
+	//         b: 444
+	//
+	// Which means "o.a.c" is a unset value, and this may be not what you want. Therefore, yquery will return an error tell you it is illegal.
+	// If you trust yourself knowing there is no other value in the structure,
+	// you could use this parameter to force set the value.
+	ForceInMerge bool
+	// Recursive could be set to true to create missing node in the middle of the path of your parser string
+	// Or yquery will return an error when it could not found the element.
+	// You don't need to set this to true if only the last element of your parser string is not exist.
+	Recursive bool
+}
+
+type setParameter struct {
+	Config
+	Value   string
+	InMerge bool
+}
+
+type getParameter struct {
+	IsRaw bool
+}
+
+type parseParameter struct {
+	setParameter
+	getParameter
 }
 
 type parseResult struct {
@@ -143,28 +232,101 @@ type parseResult struct {
 	Err  error
 }
 
-func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int, isRaw bool) parseResult {
+func (y *YQuery) setNodeValue(key string, value string) parseResult {
+	// todo: handler complex value
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(key+": "+value), &node)
+	return parseResult{&node, err}
+
+}
+func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int, isSet bool, parameter parseParameter) parseResult {
 	var e error
 	ch := make(chan parseResult, y.maxMergeInOneLayer)
 
-	// anchor use
-	if currentNode.Alias != nil {
-		if isRaw {
-			currentNode.Value = "*" + currentNode.Value
-		} else {
-			currentNode = currentNode.Alias
+	if i == len(slices) {
+		// leaf node
+		if isSet {
+			return parseResult{currentNode, fmt.Errorf("code should not enter here")}
+		}
+		// get
+		node := *currentNode
+		// anchor use, change anchor value to *value when get raw
+		if node.Alias != nil {
+			if parameter.IsRaw {
+				node.Value = "*" + node.Value
+			} else {
+				node = *node.Alias
+			}
+		}
+		// anchor definition, remove data when it is raw
+		if node.Anchor != "" {
+			if !parameter.IsRaw {
+				node.Anchor = ""
+			}
+		}
+		return parseResult{&node, nil}
+	}
+
+	if isSet && i == len(slices)-1 {
+		// set and node is leaf node, create map
+		if currentNode.Alias != nil {
+			return parseResult{currentNode, fmt.Errorf("the item '%s' reaches an anchor reference. You can not modify value from anchor reference", strings.Join(slices[:i], delimiter))}
+		}
+		if slices[i] == "" {
+			return parseResult{currentNode, fmt.Errorf("cannot parse on blank item '%s'", strings.Join(slices[:i], delimiter))}
+		}
+		result := y.setNodeValue(slices[i], parameter.Value)
+		keyNode := result.Node.Content[0].Content[0]
+		valueNode := result.Node.Content[0].Content[1]
+		switch currentNode.Tag {
+		case seqTag:
+			index, err := getSequenceNum(slices[i])
+			if err != nil {
+				return parseResult{currentNode, err}
+			}
+			if index > len(currentNode.Content) {
+				return parseResult{currentNode, fmt.Errorf("cannot set item %s with index %d while it only has %d item", strings.Join(slices[:i], delimiter), index, len(currentNode.Content))}
+			}
+			if index < len(currentNode.Content) {
+				currentNode.Content[index] = valueNode
+			} else {
+				// add new item
+				currentNode.Content = append(currentNode.Content, valueNode)
+			}
+			return parseResult{currentNode, nil}
+		case mapTag:
+			for index, content := range currentNode.Content {
+				if index%2 == 1 {
+					continue
+				}
+
+				if content.Value == slices[i] {
+					currentNode.Content[index+1] = valueNode
+					return parseResult{currentNode, nil}
+				}
+			}
+			// key not exists
+			currentNode.Content = append(currentNode.Content, keyNode, valueNode)
+			return parseResult{currentNode, nil}
+		default:
+			currentNode = &yaml.Node{
+				Kind:    yaml.MappingNode,
+				Style:   0,
+				Tag:     mapTag,
+				Content: []*yaml.Node{keyNode, valueNode},
+			}
+			return parseResult{currentNode, nil}
 		}
 	}
 
-	// anchor definition
-	if currentNode.Anchor != "" {
-		if !isRaw {
-			currentNode.Anchor = ""
+	// anchor use, return error
+	if currentNode.Alias != nil {
+		if isSet {
+			return parseResult{currentNode, fmt.Errorf("the item '%s' reaches an anchor reference. You cannot modify value from anchor reference", strings.Join(slices[:i], delimiter))}
 		}
+		currentNode = currentNode.Alias
 	}
-	if i >= len(slices) {
-		return parseResult{currentNode, nil}
-	}
+
 	nodeTag := currentNode.Tag
 	switch nodeTag {
 	case seqTag:
@@ -172,7 +334,10 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 		if err != nil {
 			return parseResult{currentNode, err}
 		}
-		return y.parseNode(slices, delimiter, currentNode.Content[index], i+1, isRaw)
+		if index >= len(currentNode.Content) {
+			return parseResult{currentNode, fmt.Errorf("the item %s cannot found. Index out of range", strings.Join(slices[:i], delimiter))}
+		}
+		return y.parseNode(slices, delimiter, currentNode.Content[index], i+1, isSet, parameter)
 	case mapTag:
 		for index, content := range currentNode.Content {
 			if index%2 == 1 {
@@ -180,20 +345,29 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 			}
 
 			if content.Tag == mergeTag {
-				ch <- y.parseNode(slices, delimiter, currentNode.Content[index+1], i, isRaw)
+				parameter.InMerge = true
+				if !isSet {
+					ch <- y.parseNode(slices, delimiter, currentNode.Content[index+1], i, isSet, parameter)
+				}
 			}
 			if content.Value == slices[i] {
-				return y.parseNode(slices, delimiter, currentNode.Content[index+1], i+1, isRaw)
+				return y.parseNode(slices, delimiter, currentNode.Content[index+1], i+1, isSet, parameter)
 			}
 		}
 		e = fmt.Errorf("cannot find item %s", strings.Join(slices[:i], delimiter))
 
 	default:
+		if isSet {
+			// literal node need to change to struct
+
+			return y.parseNode(slices, delimiter, currentNode, i+1, isSet, parameter)
+		}
 		e = fmt.Errorf("unable continue to parse item %s, get value: %s",
 			strings.Join(slices[:i], delimiter), currentNode.Value)
 	}
 	close(ch)
 	if e != nil {
+		// get, node found in element, but found in merge. return.
 		var resArr []parseResult
 		for i := 0; i < y.maxMergeInOneLayer; i++ {
 			res, ok := <-ch
