@@ -1,7 +1,8 @@
 # yquery : a yq style parser for your golang  project
 
-## Overview [![GoDoc](https://godoc.org/github.com/sixleaveakkm/yquery?status.svg)](https://godoc.org/github.com/sixleaveakkm/yquery) [![Build Status](https://travis-ci.org/sixleaveakkm/yquery.svg?branch=master)](https://travis-ci.org/sixleaveakkm/yquery)
+ [![GoDoc](https://godoc.org/github.com/sixleaveakkm/yquery?status.svg)](https://godoc.org/github.com/sixleaveakkm/yquery) [![Build Status](https://travis-ci.org/sixleaveakkm/yquery.svg?branch=master)](https://travis-ci.org/sixleaveakkm/yquery) [![Go Report Card](https://goreportcard.com/badge/github.com/sixleaveakkm/yquery)](https://goreportcard.com/report/github.com/sixleaveakkm/yquery) [![codecov](https://codecov.io/gh/sixleaveakkm/yquery/branch/master/graph/badge.svg)](https://codecov.io/gh/sixleaveakkm/yquery)
 
+## Overview
 yquery is a yq style parse to let you handle yaml file without provide data struct
 You can **GET** or **SET** item by provide string (e.g., "a.b[0]") in your golang project
 This package use [go-yaml v3](https://github.com/go-yaml/yaml/tree/v3) to do the base parse work, thanks for their great job
