@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	intTag   = "!!int"
+	strTag   = "!!str"
 	seqTag   = "!!seq"
 	mapTag   = "!!map"
 	mergeTag = "!!merge"
@@ -165,9 +167,8 @@ func (y *YQuery) Set(parser string, value string, config ...Config) error {
 	slices := getParserSlice(parser, delimiter)
 	result := y.parseNode(slices, delimiter, y.RootNode, 0, true, parseParameter{
 		setParameter: setParameter{
-			Config:  config[0],
-			Value:   value,
-			InMerge: false,
+			Config: config[0],
+			Value:  value,
 		},
 	})
 	if result.Err != nil {
@@ -214,8 +215,9 @@ type Config struct {
 
 type setParameter struct {
 	Config
-	Value   string
-	InMerge bool
+	Value      string
+	ParentNode *yaml.Node
+	Index      int
 }
 
 type getParameter struct {
@@ -236,9 +238,15 @@ func (y *YQuery) setNodeValue(key string, value string) parseResult {
 	// todo: handler complex value
 	var node yaml.Node
 	err := yaml.Unmarshal([]byte(key+": "+value), &node)
+	if err != nil {
+		// not one line
+		// change to new line and padding
+		value := "\n  " + strings.ReplaceAll(value, "\n", "\n  ")
+		err = yaml.Unmarshal([]byte(key+": "+value), &node)
+	}
 	return parseResult{&node, err}
-
 }
+
 func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.Node, i int, isSet bool, parameter parseParameter) parseResult {
 	var e error
 	ch := make(chan parseResult, y.maxMergeInOneLayer)
@@ -309,12 +317,7 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 			currentNode.Content = append(currentNode.Content, keyNode, valueNode)
 			return parseResult{currentNode, nil}
 		default:
-			currentNode = &yaml.Node{
-				Kind:    yaml.MappingNode,
-				Style:   0,
-				Tag:     mapTag,
-				Content: []*yaml.Node{keyNode, valueNode},
-			}
+			parameter.ParentNode.Content[parameter.Index] = result.Node.Content[0]
 			return parseResult{currentNode, nil}
 		}
 	}
@@ -330,6 +333,7 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 	nodeTag := currentNode.Tag
 	switch nodeTag {
 	case seqTag:
+
 		index, err := getSequenceNum(slices[i])
 		if err != nil {
 			return parseResult{currentNode, err}
@@ -337,6 +341,8 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 		if index >= len(currentNode.Content) {
 			return parseResult{currentNode, fmt.Errorf("the item %s cannot found. Index out of range", strings.Join(slices[:i], delimiter))}
 		}
+		parameter.ParentNode = currentNode
+		parameter.Index = index
 		return y.parseNode(slices, delimiter, currentNode.Content[index], i+1, isSet, parameter)
 	case mapTag:
 		for index, content := range currentNode.Content {
@@ -345,22 +351,21 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 			}
 
 			if content.Tag == mergeTag {
-				parameter.InMerge = true
 				if !isSet {
 					ch <- y.parseNode(slices, delimiter, currentNode.Content[index+1], i, isSet, parameter)
 				}
 			}
 			if content.Value == slices[i] {
+				parameter.ParentNode = currentNode
+				parameter.Index = index + 1
 				return y.parseNode(slices, delimiter, currentNode.Content[index+1], i+1, isSet, parameter)
 			}
 		}
 		e = fmt.Errorf("cannot find item %s", strings.Join(slices[:i], delimiter))
-
 	default:
 		if isSet {
 			// literal node need to change to struct
-
-			return y.parseNode(slices, delimiter, currentNode, i+1, isSet, parameter)
+			return y.setWhenStructNotFound(slices, delimiter, currentNode, i, parameter)
 		}
 		e = fmt.Errorf("unable continue to parse item %s, get value: %s",
 			strings.Join(slices[:i], delimiter), currentNode.Value)
@@ -383,4 +388,48 @@ func (y *YQuery) parseNode(slices []string, delimiter string, currentNode *yaml.
 		}
 	}
 	return parseResult{currentNode, e}
+}
+
+func (y *YQuery) setWhenStructNotFound(slices []string, delimiter string, currentNode *yaml.Node, i int, parameter parseParameter) parseResult {
+	// literal node need to change to struct
+	seqID, err := getSequenceNum(slices[i+1])
+	if err == nil && seqID != 0 {
+		return parseResult{currentNode, fmt.Errorf("can not create new sequence with only %d's item", seqID)}
+	}
+	if i < len(slices)-1 {
+		// remaining more then one level
+		if !parameter.Recursive {
+			return parseResult{currentNode, fmt.Errorf("internal item '%s' not exists", strings.Join(slices[:i+1], delimiter))}
+		}
+		var contentHolderNode yaml.Node
+		if seqID == 0 {
+			contentHolderNode = yaml.Node{
+				Kind:    yaml.SequenceNode,
+				Tag:     seqTag,
+				Content: nil,
+			}
+		} else {
+			contentHolderNode = yaml.Node{
+				Kind: yaml.MappingNode,
+				Tag:  mapTag,
+			}
+		}
+		parameter.ParentNode.Content[parameter.Index] = &yaml.Node{
+			Kind:  yaml.MappingNode,
+			Style: 0,
+			Tag:   mapTag,
+			Content: []*yaml.Node{
+				&yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Tag:   strTag,
+					Value: slices[i+1],
+				},
+				&contentHolderNode,
+			},
+		}
+		return y.parseNode(slices, delimiter, currentNode, i+1, true, parameter)
+	}
+	result := y.setNodeValue(slices[i], parameter.Value)
+	parameter.ParentNode.Content[parameter.Index] = result.Node.Content[0]
+	return parseResult{currentNode, nil}
 }

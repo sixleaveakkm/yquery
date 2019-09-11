@@ -193,7 +193,9 @@ func TestSet(t *testing.T) {
 	asserts := assert.New(t)
 	testCases := []casePair{
 		{"g.h", "override map to string"},
-//		{"j.k.newItem", "override string to map"},
+		{"j.k.newItem", "override string to map"},
+		{"n[1].newItem", "override string to list"},
+		{"n[2][0].newItem", "override string to list in list"},
 	}
 	for _, c := range testCases {
 		err := yq.Set(c.Parser, c.Value)
@@ -222,3 +224,15 @@ func TestStrangeDelimiterError(t *testing.T) {
 	})
 	asserts.Error(err)
 }
+
+// func TestRecursiveSet(t *testing.T) {
+// 	asserts := assert.New(t)
+// 	testCase := casePair{"newA.newB.newC", "new value"}
+// 	err := yq.Set(testCase.Parser, testCase.Value, yquery.Config{
+// 		Recursive: true,
+// 	})
+// 	asserts.NoError(err)
+// 	res, _ := yq.Get(testCase.Parser)
+// 	asserts.Equal(testCase.Value, res)
+//
+// }

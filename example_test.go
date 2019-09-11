@@ -23,6 +23,9 @@ C: *anchorA
 D: "*anchorA"
 `
 
+// language=yaml
+var dataToSet = `newData: this is a new string`
+
 func ExampleGetInt() {
 	yq, _ := yquery.Unmarshal([]byte(exampleData))
 
@@ -170,6 +173,14 @@ func ExampleSetList() {
 	dataF1, _ := yq.Get("mapC.listF[0]")
 	fmt.Println(dataF1)
 	// Output: item to be 0
+}
+
+func ExampleSetAddStruct() {
+	yq, _ := yquery.Unmarshal([]byte(exampleData))
+	_ = yq.Set("G", dataToSet)
+	GNewData, _ := yq.Get("G.newData")
+	fmt.Println(GNewData)
+	// Output: this is a new string
 }
 
 func ExampleSetListNewItem() {

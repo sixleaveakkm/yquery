@@ -18,8 +18,8 @@ go get github.com/sixleaveakkm/yquery
 - [x] able to get item raw data
 - [x] able to set exist item with simple struct data
 - [x] able to set (add) new item with simple data
+- [x] able to set (convert) literal node to map or list 
 
-- [ ] able to set (convert) literal node to map or list 
 - [ ] able to set recursive path item with data
 - [ ] able to set item with anchor or merge
 - [ ] able to handler comment properly
