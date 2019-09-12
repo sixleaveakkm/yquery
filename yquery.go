@@ -241,7 +241,7 @@ func (y *YQuery) setNodeValue(key string, value string) parseResult {
 	if err != nil {
 		// not one line
 		// change to new line and padding
-		value := "\n  " + strings.ReplaceAll(value, "\n", "\n  ")
+		value := "\n  " + strings.Replace(value, "\n", "\n  ", -1)
 		err = yaml.Unmarshal([]byte(key+": "+value), &node)
 	}
 	return parseResult{&node, err}
